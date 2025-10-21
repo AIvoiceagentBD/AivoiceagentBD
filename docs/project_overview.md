@@ -1,4 +1,4 @@
-# 🇧🇩 Bangla AI Voice Agent — Multilingual & Global-ready
+# 🇧🇩 AI Voice Agent — Multilingual & Global-ready
 
 **An AI-powered voice agent that speaks, understands, and completes short tasks — Bangla-first, globally ready.**  
 Built to help businesses automate short real-world conversations (appointment scheduling, order confirmations, campaigns, follow-ups) in Bangla — and designed to scale to English and other languages for global customers.
