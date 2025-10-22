@@ -1,1 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead & Order Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Dependencies for robust functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .card {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 5px 15px -5px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            transition: transform 0.1s ease-in-out;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Dashboard Styling */
+        .dashboard-container {
+            min-height: 100vh;
+            padding-top: 2rem;
+        }
+        #leads-table-container {
+            max-height: 80vh; /* Make the table scrollable */
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+        .text-currency {
+            font-family: 'Inter', monospace; /* Use monospaced font for financials */
+            font-weight: 600;
+        }
+        /* Tabs Styling */
+        .tab {
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            padding-bottom: 0.5rem;
+            transition: border-color 0.2s;
+        }
+        .tab.active {
+            border-color: #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        /* Status Colors */
+        .status-open { color: #f59e0b; } /* Amber */
+        .status-closed { color: #10b981; } /* Green */
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Main Container -->
+    <div id="app-container" class="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl font-bold text-gray-900">Comprehensive Lead & Order Entry</h1>
+            <p class="text-lg text-indigo-600 mt-1">Capture single or bulk customer data with full order details.</p>
+        </header>
+        
+        <!-- Status Message Box -->
+        <div id="status-message" class="hidden p-4 mb-6 rounded-lg text-white font-semibold" role="alert"></div>
+
+        <!-- Lead Capture Section -->
+        <div id="form-section" class="card bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-100 mb-12">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 border-b pb-3">Data Entry Methods</h2>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 mb-6">
+                <div id="tab-single" class="tab active text-gray-600 mr-8" onclick="switchTab('single')">Manual Single Entry</div>
+                <div id="tab-csv" class="tab text-gray-600" onclick="switchTab('csv')">Bulk CSV Upload</div>
+            </div>
+
+            <!-- Single Lead Entry Form -->
+            <div id="content-single">
+                <form id="lead-form" class="space-y-6">
+                    <!-- Section 1: Customer Details -->
+                    <h3 class="text-lg font-medium text-indigo-700">1. Customer Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-1">
+                            <label for="name" class="block text-sm font-medium text-gray-700">Customer's Name*</label>
+                            <input type="text" id="name" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="phone1" class="block text-sm font-medium text-gray-700">Primary Number*</label>
+                            <input type="tel" id="phone1" name="phone1" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="phone2" class="block text-sm font-medium text-gray-700">Alternative Number</label>
+                            <input type="tel" id="phone2" name="phone2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Product Details -->
+                    <h3 class="text-lg font-medium text-indigo-700 pt-4 border-t">2. Product Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label for="productName" class="block text-sm font-medium text-gray-700">Product Name*</label>
+                            <input type="text" id="productName" name="productName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="productSize" class="block text-sm font-medium text-gray-700">Size</label>
+                            <input type="text" id="productSize" name="productSize" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="productColor" class="block text-sm font-medium text-gray-700">Color</label>
+                            <input type="text" id="productColor" name="productColor" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity*</label>
+                            <input type="number" id="quantity" name="quantity" required min="1" value="1" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Location Details -->
+                    <h3 class="text-lg font-medium text-indigo-700 pt-4 border-t">3. Shipping Address</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="division" class="block text-sm font-medium text-gray-700">Division/Region*</label>
+                            <input type="text" id="division" name="division" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="city" class="block text-sm font-medium text-gray-700">City/District*</label>
+                            <input type="text" id="city" name="city" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div class="md:col-span-1">
+                            <label for="streetAddress" class="block text-sm font-medium text-gray-700">Street Address</label>
+                            <input type="text" id="streetAddress" name="streetAddress" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Financial Details -->
+                    <h3 class="text-lg font-medium text-indigo-700 pt-4 border-t">4. Financials & Remarks</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="price" class="block text-sm font-medium text-gray-700">Total Price*</label>
+                            <input type="number" id="price" name="price" required min="0" value="0" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="paid" class="block text-sm font-medium text-gray-700">Amount Paid*</label>
+                            <input type="number" id="paid" name="paid" required min="0" value="0" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="amountLeft" class="block text-sm font-medium text-gray-700">Amount Left (Auto-Calculated)</label>
+                            <input type="text" id="amountLeft" name="amountLeft" value="0.00" readonly class="mt-1 block w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md shadow-sm text-gray-600 cursor-not-allowed">
+                        </div>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div>
+                        <label for="remarks" class="block text-sm font-medium text-gray-700">Remarks / Customer Notes</label>
+                        <textarea id="remarks" name="remarks" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                    </div>
+
+                    <button type="submit" id="submit-button" class="w-full flex justify-center items-center py-3 px-4 rounded-md shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 btn-primary">
+                        <span id="button-text">Submit Single Lead</span>
+                        <span id="button-spinner" class="loading-spinner ml-2 hidden"></span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Bulk CSV Upload Content -->
+            <div id="content-csv" class="hidden">
+                <div class="space-y-6">
+                    <h3 class="text-lg font-medium text-indigo-700">1. CSV Format Requirements</h3>
+                    <p class="text-gray-700">Your CSV file **must** contain the following 13 column headers in any order. Empty columns are acceptable for optional fields, but the header name must match exactly:</p>
+                    <div class="overflow-x-auto">
+                        <pre class="bg-gray-100 p-3 rounded-lg text-sm text-gray-800 border border-gray-200 shadow-inner">Customer's Name*, Primary Number*, Alternative Number, Product Name*, Product Size, Product Color, Quantity*, Division*, City*, Street Address, Total Price*, Amount Paid*, Remarks</pre>
+                    </div>
+                    <p class="text-red-600 text-sm font-semibold">Rows with missing data for required fields (marked with *) will be skipped.</p>
+
+                    <!-- NEW: CSV Sample Block -->
+                    <h3 class="text-lg font-medium text-indigo-700 pt-4 border-t">2. Sample Data Structure</h3>
+                    <p class="text-gray-700 text-sm">Use this sample structure as a template for your file. **Note the quotes** around column headers and text fields to prevent issues with commas in data.</p>
+                    
+                    <button type="button" id="download-sample-button" class="flex items-center justify-center py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download Sample CSV
+                    </button>
+
+                    <div class="overflow-x-auto">
+                        <pre class="bg-yellow-50 p-3 rounded-lg text-xs text-gray-800 border border-yellow-200 shadow-inner">"Customer's Name","Primary Number","Alternative Number","Product Name","Product Size","Product Color","Quantity","Division","City","Street Address","Total Price","Amount Paid","Remarks"
+"John Smith","555-111-2222","555-333-4444","Widget Pro","Large","Blue",2,"North","Metropolis","101 Main St",150.00,50.00,"Needs quick delivery."
+"Alice Johnson","555-555-6666","","MegaGadget X","Small","Red",1,"South","Rivertown","PO Box 20",299.99,299.99,"Paid in full."</pre>
+                    </div>
+                    <!-- END NEW: CSV Sample Block -->
+
+
+                    <h3 class="text-lg font-medium text-indigo-700 pt-4 border-t">3. Upload Your File</h3>
+                    <input type="file" id="csv-file-input" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+
+                    <p id="csv-summary" class="text-sm text-gray-600 italic mt-3 hidden"></p>
+
+                    <button type="button" id="upload-csv-button" class="w-full flex justify-center items-center py-3 px-4 rounded-md shadow-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 btn-primary disabled:opacity-50" disabled>
+                        <span id="upload-button-text">Process and Upload Data</span>
+                        <span id="upload-button-spinner" class="loading-spinner ml-2 hidden"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Admin Dashboard Section -->
+        <div id="admin-dashboard" class="dashboard-container mt-12 hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Admin Dashboard: Captured Orders & Leads</h2>
+            
+            <p class="text-sm text-gray-600 mb-4">
+                App ID: <strong id="app-id-display" class="text-indigo-600">Loading...</strong>. 
+                Your Admin ID: <strong id="user-id-display" class="text-indigo-600">Loading...</strong>
+            </p>
+
+            <div id="dashboard-loading" class="text-center py-10">
+                <span class="loading-spinner w-8 h-8"></span>
+                <p class="mt-3 text-gray-600">Loading leads...</p>
+            </div>
+            
+            <!-- Filtering and Search Controls -->
+            <div id="filter-controls" class="card bg-white p-4 rounded-xl shadow-md border border-gray-100 mb-6 flex flex-wrap gap-4 items-center">
+                <div class="flex-grow">
+                    <label for="search-input" class="sr-only">Search Leads</label>
+                    <input type="text" id="search-input" placeholder="Search by Name, Product, or Phone..." class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <select id="filter-division" class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <option value="All">All Divisions</option>
+                </select>
+                
+                <select id="filter-city" class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <option value="All">All Cities</option>
+                </select>
+
+                <select id="filter-status" class="px-3 py-2 border border-gray-300 rounded-md text-sm bg-yellow-50 text-yellow-700 font-medium">
+                    <option value="Open">Open Orders</option>
+                    <option value="Closed">Closed Orders</option>
+                    <option value="All">All Statuses</option>
+                </select>
+            </div>
+
+
+            <!-- Table Container -->
+            <div id="leads-table-container" class="card bg-white rounded-xl shadow-lg border border-gray-100 p-2 sm:p-4 hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer & Location</th>
+                            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Info</th>
+                            <th scope="col" class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price/Paid/Left</th>
+                            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status & Remarks</th>
+                            <th scope="col" class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leads-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Leads will be injected here -->
+                    </tbody>
+                </table>
+                <div id="no-leads-message" class="text-center py-8 text-gray-500 hidden">
+                    No leads or orders captured yet, or no results matched your filter criteria.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase Imports and Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            onSnapshot, 
+            query, 
+            setLogLevel,
+            serverTimestamp,
+            deleteDoc,
+            doc,
+            updateDoc
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // --- UI Elements ---
+        const form = document.getElementById('lead-form');
+        const submitButton = document.getElementById('submit-button');
+        const buttonText = document.getElementById('button-text');
+        const buttonSpinner = document.getElementById('button-spinner');
+        const statusMessage = document.getElementById('status-message');
+        const leadsBody = document.getElementById('leads-body');
+        const dashboard = document.getElementById('admin-dashboard');
+        const dashboardLoading = document.getElementById('dashboard-loading');
+        const leadsTableContainer = document.getElementById('leads-table-container');
+        const noLeadsMessage = document.getElementById('no-leads-message');
+        const appIdDisplay = document.getElementById('app-id-display');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const priceInput = document.getElementById('price');
+        const paidInput = document.getElementById('paid');
+        const amountLeftInput = document.getElementById('amountLeft');
+        const csvFileInput = document.getElementById('csv-file-input');
+        const uploadCsvButton = document.getElementById('upload-csv-button');
+        const uploadButtonText = document.getElementById('upload-button-text');
+        const uploadButtonSpinner = document.getElementById('upload-button-spinner');
+        const csvSummary = document.getElementById('csv-summary');
+        // Filter Elements
+        const searchInput = document.getElementById('search-input');
+        const filterDivision = document.getElementById('filter-division');
+        const filterCity = document.getElementById('filter-city');
+        const filterStatus = document.getElementById('filter-status');
+        // New: Download Button
+        const downloadSampleButton = document.getElementById('download-sample-button');
+        
+        // --- Firebase Instances & Dashboard State ---
+        let db;
+        let auth;
+        let userId = 'loading...';
+        
+        // State for Dashboard Data and Filtering
+        let allLeads = []; // Stores the raw data from Firestore
+        let availableDivisions = new Set();
+        let availableCities = new Set();
+        let currentFilters = {
+            search: '',
+            division: 'All',
+            city: 'All',
+            status: 'Open' 
+        };
+
+        const REQUIRED_CSV_HEADERS = [
+            "Customer's Name", "Primary Number", "Product Name", "Quantity", 
+            "Division", "City", "Total Price", "Amount Paid"
+        ];
+        const ALL_CSV_HEADERS = [
+            "Customer's Name", "Primary Number", "Alternative Number", "Product Name", 
+            "Product Size", "Product Color", "Quantity", "Division", 
+            "City", "Street Address", "Total Price", "Amount Paid", "Remarks"
+        ];
+        
+        // Correct CSV Sample Data String for download
+        const CSV_SAMPLE_DATA = 
+            `"Customer's Name","Primary Number","Alternative Number","Product Name","Product Size","Product Color","Quantity","Division","City","Street Address","Total Price","Amount Paid","Remarks"\n` +
+            `"John Smith","555-111-2222","555-333-4444","Widget Pro","Large","Blue",2,"North","Metropolis","101 Main St",150.00,50.00,"Needs quick delivery."\n` +
+            `"Alice Johnson","555-555-6666","","MegaGadget X","Small","Red",1,"South","Rivertown","PO Box 20",299.99,299.99,"Paid in full."`;
+
+        // --- Utility Functions ---
+
+        /**
+         * Switches the tab content (Single Entry vs CSV Upload).
+         */
+        window.switchTab = function(tabName) {
+            const singleContent = document.getElementById('content-single');
+            const csvContent = document.getElementById('content-csv');
+            const tabSingle = document.getElementById('tab-single');
+            const tabCsv = document.getElementById('tab-csv');
+
+            if (tabName === 'single') {
+                singleContent.classList.remove('hidden');
+                csvContent.classList.add('hidden');
+                tabSingle.classList.add('active');
+                tabCsv.classList.remove('active');
+            } else {
+                singleContent.classList.add('hidden');
+                csvContent.classList.remove('hidden');
+                tabSingle.classList.remove('active');
+                tabCsv.classList.add('active');
+            }
+        }
+
+        /**
+         * Downloads the sample CSV file using a Data URI.
+         */
+        function downloadSampleCSV() {
+            const blob = new Blob([CSV_SAMPLE_DATA], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sample_leads.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        /**
+         * Calculates and updates the 'Amount Left' field.
+         */
+        function updateAmountLeft() {
+            const price = parseFloat(priceInput.value) || 0;
+            const paid = parseFloat(paidInput.value) || 0;
+            const left = (price - paid).toFixed(2);
+            amountLeftInput.value = left;
+        }
+
+        /**
+         * Utility function to display status messages.
+         */
+        function showStatus(message, isSuccess) {
+            statusMessage.textContent = message;
+            statusMessage.className = `p-4 mb-6 rounded-lg text-white font-semibold ${isSuccess ? 'bg-green-600' : 'bg-red-600'}`;
+            statusMessage.classList.remove('hidden');
+            
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 8000);
+        }
+
+        /**
+         * Normalizes header names from the CSV to database field names.
+         */
+        function normalizeHeader(header) {
+            if (!header) return null;
+            const map = {
+                "Customer's Name": 'name',
+                "Primary Number": 'phone1',
+                "Alternative Number": 'phone2',
+                "Product Name": 'productName',
+                "Product Size": 'productSize',
+                "Product Color": 'productColor',
+                "Quantity": 'quantity',
+                "Division": 'division',
+                "City": 'city',
+                "Street Address": 'streetAddress',
+                "Total Price": 'price',
+                "Amount Paid": 'paid',
+                "Remarks": 'remarks'
+            };
+            return map[header.trim()] || null;
+        }
+        
+        // --- Dashboard CRUD Operations ---
+
+        /**
+         * Deletes a lead document from Firestore.
+         */
+        async function deleteLead(leadId) {
+            // Using a custom confirmation logic instead of window.confirm
+            if (!confirm("Are you sure you want to permanently delete this order? This action cannot be undone.")) {
+                return;
+            }
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', leadId);
+                await deleteDoc(docRef);
+                showStatus(`Order ${leadId} deleted successfully.`, true);
+            } catch (error) {
+                console.error("Error deleting document:", error);
+                showStatus(`Failed to delete order. Error: ${error.message}`, false);
+            }
+        }
+        window.deleteLead = deleteLead; // Expose to global scope for HTML onclick
+
+        /**
+         * Updates the status of a lead.
+         */
+        async function updateLeadStatus(leadId, isChecked) {
+            const newStatus = isChecked ? 'Closed' : 'Open';
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'leads', leadId);
+                await updateDoc(docRef, {
+                    status: newStatus
+                });
+                showStatus(`Order ${leadId} status updated to ${newStatus}.`, true);
+            } catch (error) {
+                console.error("Error updating status:", error);
+                showStatus(`Failed to update status. Error: ${error.message}`, false);
+            }
+        }
+        window.updateLeadStatus = updateLeadStatus; // Expose to global scope for HTML onclick
+
+        // --- Submission Logic ---
+
+        /**
+         * Submits a single lead to Firestore.
+         */
+        async function submitLead(leadData) {
+            try {
+                if (!db) throw new Error("Database not initialized.");
+
+                // Calculate Amount Left and set default status
+                leadData.left = (parseFloat(leadData.price) - parseFloat(leadData.paid)).toFixed(2);
+                leadData.status = leadData.status || 'Open'; 
+                leadData.timestamp = serverTimestamp();
+                
+                // Path: /artifacts/{appId}/public/data/leads/{documentId}
+                const leadsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'leads');
+                await addDoc(leadsCollectionRef, leadData);
+                return true;
+            } catch (error) {
+                console.error("Error submitting lead:", error);
+                throw new Error(`Submission failed: ${error.message}`);
+            }
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            submitButton.disabled = true;
+            buttonText.textContent = 'Submitting...';
+            buttonSpinner.classList.remove('hidden');
+            statusMessage.classList.add('hidden');
+
+            try {
+                const formData = new FormData(form);
+                const leadData = {
+                    name: formData.get('name'),
+                    phone1: formData.get('phone1'),
+                    phone2: formData.get('phone2') || '',
+                    productName: formData.get('productName'),
+                    productSize: formData.get('productSize') || '',
+                    productColor: formData.get('productColor') || '',
+                    quantity: parseInt(formData.get('quantity')) || 1,
+                    division: formData.get('division'),
+                    city: formData.get('city'),
+                    streetAddress: formData.get('streetAddress') || '',
+                    price: parseFloat(formData.get('price')) || 0,
+                    paid: parseFloat(formData.get('paid')) || 0,
+                    remarks: formData.get('remarks') || 'No remarks provided.',
+                    status: 'Open' // New field: default status for manual entries
+                };
+
+                await submitLead(leadData);
+
+                showStatus('Single Order submitted successfully!', true);
+                form.reset(); 
+                updateAmountLeft(); 
+            } catch (error) {
+                showStatus(error.message, false);
+            } finally {
+                submitButton.disabled = false;
+                buttonText.textContent = 'Submit Single Lead';
+                buttonSpinner.classList.add('hidden');
+            }
+        }
+        
+        // --- Bulk CSV Upload Logic ---
+        function handleFileChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadCsvButton.disabled = false;
+                csvSummary.textContent = `File ready: ${file.name} (${(file.size / 1024).toFixed(2)} KB). Click 'Process and Upload' to begin.`;
+                csvSummary.classList.remove('hidden');
+            } else {
+                uploadCsvButton.disabled = true;
+                csvSummary.classList.add('hidden');
+            }
+        }
+        
+        function processAndUploadCSV() {
+            const file = csvFileInput.files[0];
+            if (!file) {
+                showStatus("Please select a CSV file first.", false);
+                return;
+            }
+
+            uploadCsvButton.disabled = true;
+            uploadButtonText.textContent = 'Processing...';
+            uploadButtonSpinner.classList.remove('hidden');
+            statusMessage.classList.add('hidden');
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                complete: async function(results) {
+                    const data = results.data;
+                    const headers = results.meta.fields;
+                    
+                    const missingHeaders = REQUIRED_CSV_HEADERS.filter(h => !headers.includes(h));
+                    if (missingHeaders.length > 0) {
+                        showStatus(`Error: CSV is missing required headers: ${missingHeaders.join(', ')}. Please correct and retry.`, false);
+                        resetUploadUI();
+                        return;
+                    }
+
+                    let validLeads = [];
+                    let skippedCount = 0;
+
+                    data.forEach((row, index) => {
+                        let normalizedData = {};
+                        let isValid = true;
+
+                        ALL_CSV_HEADERS.forEach(header => {
+                            const dbField = normalizeHeader(header);
+                            if (dbField) {
+                                normalizedData[dbField] = row[header] ? row[header].trim() : '';
+                            }
+                        });
+
+                        // Ensure required fields are present
+                        if (!normalizedData.name || !normalizedData.phone1 || !normalizedData.productName || !normalizedData.quantity || !normalizedData.division || !normalizedData.city || !normalizedData.price || !normalizedData.paid) {
+                            skippedCount++;
+                            isValid = false;
+                        }
+
+                        if (isValid) {
+                            normalizedData.quantity = parseInt(normalizedData.quantity) || 0;
+                            normalizedData.price = parseFloat(normalizedData.price) || 0;
+                            normalizedData.paid = parseFloat(normalizedData.paid) || 0;
+                            normalizedData.status = 'Open'; 
+
+                            if (normalizedData.quantity < 1 || normalizedData.price < 0 || normalizedData.paid < 0) {
+                                skippedCount++;
+                            } else {
+                                validLeads.push(normalizedData);
+                            }
+                        }
+                    });
+
+                    let uploadedCount = 0;
+                    if (validLeads.length > 0) {
+                        for (const lead of validLeads) {
+                            try {
+                                await submitLead(lead); 
+                                uploadedCount++;
+                            } catch (e) {
+                                console.error("Failed to upload lead:", lead, e);
+                            }
+                        }
+                    }
+
+                    if (uploadedCount > 0) {
+                        showStatus(`Bulk upload complete! ${uploadedCount} leads uploaded. ${skippedCount} rows skipped due to missing or invalid data.`, true);
+                    } else if (data.length > 0) {
+                        showStatus(`Bulk upload failed. No valid leads were found in the file. ${skippedCount} rows skipped.`, false);
+                    } else {
+                        showStatus("The CSV file was empty.", false);
+                    }
+
+                    resetUploadUI();
+                    csvFileInput.value = ''; 
+                    csvSummary.classList.add('hidden');
+                }
+            });
+        }
+
+        function resetUploadUI() {
+            uploadCsvButton.disabled = false;
+            uploadButtonText.textContent = 'Process and Upload Data';
+            uploadButtonSpinner.classList.add('hidden');
+        }
+
+        // --- Dashboard Filtering and Rendering ---
+        
+        /**
+         * Updates the filter state and re-renders the leads.
+         */
+        function handleFilterChange() {
+            currentFilters.search = searchInput.value.trim();
+            currentFilters.division = filterDivision.value;
+            currentFilters.city = filterCity.value;
+            currentFilters.status = filterStatus.value;
+            
+            filterAndRenderLeads();
+        }
+
+        /**
+         * Populates the Division and City filter dropdowns.
+         */
+        function populateFilters() {
+            // Clear existing options (except 'All')
+            filterDivision.innerHTML = '<option value="All">All Divisions</option>';
+            filterCity.innerHTML = '<option value="All">All Cities</option>';
+
+            // Populate Division
+            availableDivisions.forEach(div => {
+                const option = document.createElement('option');
+                option.value = div;
+                option.textContent = div;
+                filterDivision.appendChild(option);
+            });
+            
+            // Populate City
+            availableCities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                filterCity.appendChild(option);
+            });
+            
+            // Restore current filter selections if possible
+            filterDivision.value = currentFilters.division;
+            filterCity.value = currentFilters.city;
+        }
+
+        /**
+         * Applies filters and renders the leads table.
+         */
+        function filterAndRenderLeads() {
+            // 1. Apply Filtering
+            let filteredLeads = allLeads.filter(lead => {
+                const search = currentFilters.search.toLowerCase();
+                const matchesSearch = !search ||
+                    lead.name.toLowerCase().includes(search) ||
+                    lead.productName.toLowerCase().includes(search) ||
+                    lead.phone1.includes(search) ||
+                    (lead.phone2 && lead.phone2.includes(search));
+
+                const matchesDivision = currentFilters.division === 'All' || lead.division === currentFilters.division;
+                const matchesCity = currentFilters.city === 'All' || lead.city === currentFilters.city;
+                const matchesStatus = currentFilters.status === 'All' || lead.status === currentFilters.status;
+
+                return matchesSearch && matchesDivision && matchesCity && matchesStatus;
+            });
+
+            // 2. Sort (Client-side, by timestamp descending)
+            filteredLeads.sort((a, b) => {
+                const timeA = a.timestamp ? a.timestamp.toDate().getTime() : 0;
+                const timeB = b.timestamp ? b.timestamp.toDate().getTime() : 0;
+                return timeB - timeA;
+            });
+
+            // 3. Render
+            leadsBody.innerHTML = '';
+
+            if (filteredLeads.length === 0) {
+                leadsTableContainer.classList.add('hidden');
+                noLeadsMessage.classList.remove('hidden');
+            } else {
+                noLeadsMessage.classList.add('hidden');
+                leadsTableContainer.classList.remove('hidden');
+                
+                filteredLeads.forEach(lead => {
+                    const dateString = lead.timestamp ? moment(lead.timestamp.toDate()).format('YYYY-MM-DD HH:mm') : 'N/A';
+                    const isClosed = lead.status === 'Closed';
+                    const statusClass = isClosed ? 'status-closed' : 'status-open';
+                    const amountLeft = parseFloat(lead.left || 0);
+
+                    const row = `
+                        <tr class="hover:bg-gray-50 align-top ${isClosed ? 'opacity-60' : ''}">
+                            <td class="px-2 py-3 text-sm text-gray-800">
+                                <div class="font-bold">${lead.name}</div>
+                                <div class="text-xs text-gray-500 mt-1">Primary: ${lead.phone1 || 'N/A'}</div>
+                                <div class="text-xs text-indigo-500 mt-2">
+                                    ${lead.division || 'N/A'}, ${lead.city || 'N/A'}
+                                </div>
+                            </td>
+                            <td class="px-2 py-3 text-sm text-gray-800">
+                                <div class="font-medium">${lead.productName}</div>
+                                <div class="text-xs text-gray-500 mt-1">Size: ${lead.productSize || 'N/A'} | Color: ${lead.productColor || 'N/A'}</div>
+                                <div class="text-sm text-green-600 font-bold mt-1">Qty: ${lead.quantity || 1}</div>
+                            </td>
+                            <td class="px-2 py-3 text-right text-sm text-gray-800 text-currency">
+                                <div class="text-sm">Total: ${parseFloat(lead.price || 0).toFixed(2)}</div>
+                                <div class="text-sm text-green-700">Paid: ${parseFloat(lead.paid || 0).toFixed(2)}</div>
+                                <div class="text-sm font-extrabold ${amountLeft > 0 ? 'text-red-600' : 'text-gray-400'} border-t pt-1 mt-1">Left: ${amountLeft.toFixed(2)}</div>
+                            </td>
+                            <td class="px-2 py-3 whitespace-normal text-xs text-gray-500 max-w-xs">
+                                <div class="font-semibold ${statusClass}">${lead.status}</div>
+                                <div class="mt-1">${lead.remarks || '—'}</div>
+                                <div class="text-xs text-gray-300 pt-2">${dateString}</div>
+                            </td>
+                            <td class="px-2 py-3 text-center">
+                                <div class="flex flex-col space-y-2 items-center">
+                                    <!-- Status Toggle Checkbox -->
+                                    <label class="flex items-center space-x-2 text-sm">
+                                        <input 
+                                            type="checkbox" 
+                                            ${isClosed ? 'checked' : ''} 
+                                            onchange="updateLeadStatus('${lead.id}', this.checked)"
+                                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        >
+                                        <span class="text-gray-700">${isClosed ? 'Closed' : 'Mark Closed'}</span>
+                                    </label>
+
+                                    <!-- Delete Button -->
+                                    <button 
+                                        onclick="deleteLead('${lead.id}')"
+                                        class="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded-md border border-red-200 hover:bg-red-50 transition duration-150"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    leadsBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        // --- Dashboard Real-time Listener ---
+        /**
+         * Sets up the real-time listener for the Admin Dashboard.
+         */
+        function setupLeadsListener() {
+            const leadsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'leads');
+            const q = query(leadsCollectionRef); 
+
+            onSnapshot(q, (querySnapshot) => {
+                dashboardLoading.classList.add('hidden');
+                allLeads = []; // Reset lead data
+                availableDivisions = new Set();
+                availableCities = new Set();
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // Collect all data and update filter sets
+                    allLeads.push({ id: doc.id, ...data });
+                    if (data.division) availableDivisions.add(data.division);
+                    if (data.city) availableCities.add(data.city);
+                });
+
+                // 1. Populate filters with fresh data
+                populateFilters();
+                
+                // 2. Filter and render the new data set
+                filterAndRenderLeads();
+                
+            }, (error) => {
+                console.error("Error fetching leads:", error);
+                dashboardLoading.classList.add('hidden');
+                showStatus(`Could not load dashboard data. Check console for rules error.`, false);
+            });
+        }
+
+        // --- Initialization ---
+        async function initAppSetup() {
+            setLogLevel('Debug');
+
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Firebase configuration is missing.");
+                }
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId;
+                        appIdDisplay.textContent = appId;
+                        dashboard.classList.remove('hidden');
+                        setupLeadsListener();
+                    } else {
+                         userId = 'UNAUTHENTICATED';
+                         userIdDisplay.textContent = userId;
+                         appIdDisplay.textContent = appId;
+                         dashboardLoading.classList.add('hidden');
+                         console.log("User is unauthenticated. Dashboard not loaded.");
+                    }
+                });
+                
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                userIdDisplay.textContent = `ERROR: ${error.message}`;
+                dashboardLoading.classList.add('hidden');
+                showStatus(`Initialization Failed. Check console for details.`, false);
+            }
+        }
+
+        // Add event listeners
+        form.addEventListener('submit', handleFormSubmit);
+        priceInput.addEventListener('input', updateAmountLeft);
+        paidInput.addEventListener('input', updateAmountLeft);
+        csvFileInput.addEventListener('change', handleFileChange);
+        uploadCsvButton.addEventListener('click', processAndUploadCSV);
+        downloadSampleButton.addEventListener('click', downloadSampleCSV); // NEW listener
+        
+        // Add listeners for filtering and search
+        searchInput.addEventListener('input', handleFilterChange);
+        filterDivision.addEventListener('change', handleFilterChange);
+        filterCity.addEventListener('change', handleFilterChange);
+        filterStatus.addEventListener('change', handleFilterChange); 
+        
+        // Initial call to set Amount Left to 0.00
+        updateAmountLeft();
+
+        // Initialize the app on page load
+        initAppSetup();
+    </script>
+</body>
+</html>
 
