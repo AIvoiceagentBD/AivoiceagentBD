@@ -139,15 +139,15 @@ Confirming an e-commerce order through an automated Bangla/English voice agent.
 ### 7. Mixed Banglish Real-life Phrases
 | Intent              | Possible Responses (Bangla-English Mix) | Possible Responses (English)                         |
 |---------------------|-----------------------------------------|------------------------------------------------------|
-| Banglish            | OK, order confirm                       | Order confirmed                                      |
-| Banglish            | Delivery ta kobe ashbe?                 | When is the delivery coming?                         |
-| Banglish            | Order ta cancel korte bolsi             | I told you to cancel the order                       |
-| Banglish            | Order ta thik ache                      | The order is fine/confirmed                          |
-| Banglish            | Ami ekhon bujhte parchhi na, pore call korben? | I can’t understand now, can you call later?   |
-| Banglish            | Tracking number dile bhalo hoi          | Please give the tracking number                      |
-| Banglish            | Same address-e pathaben                 | Send to the same address                             |
-| Banglish            | Payment delivery te hobe                | Payment will be at delivery                          |
-| Banglish            | Product ta change korte chai            | I want to change the product                         |
+|Confirm Order        | OK, order confirm                       | Order confirmed                                      |
+| Question            | Delivery ta kobe ashbe?                 | When is the delivery coming?                         |
+| Cancel / Refuse     | Order ta cancel korte bolsi             | I told you to cancel the order                       |
+| Confirm Order       | Order ta thik ache                      | The order is fine/confirmed                          |
+| Question            | Ami ekhon bujhte parchhi na, pore call korben? | I can’t understand now, can you call later?   |
+| Question            | Tracking number dile bhalo hoi          | Please give the tracking number                      |
+| Confirm Order       | Same address-e pathaben                 | Send to the same address                             |
+| Confirm Order       | Payment delivery te hobe                | Payment will be at delivery                          |
+| Modify Order        | Product ta change korte chai            | I want to change the product                         |
 
 ---
 
